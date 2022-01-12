@@ -32,6 +32,8 @@ func main() {
 		return
 	}
 
+	os.MkdirAll("./memes", os.ModePerm)
+
 	b.Handle("/drist_list", func(m *tb.Message) {
 		file, err := os.Open("./memes")
 		if err != nil {
