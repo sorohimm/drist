@@ -6,17 +6,38 @@ import (
 	tb "gopkg.in/tucnak/telebot.v2"
 	"log"
 	"os"
+	"path/filepath"
 	"regexp"
 	"time"
 )
 
-const telegramTokenEnv string = "5075773271:AAGoTk9skey89rzVoCVz-L6W3EISm0donLs"
+const telegramTokenEnv string = "5091467802:AAFgDlGT-kg95yj_DccVN6g-icsH6FGojHw"
+
+func GetDristTypeFromFn(fname string) DristType {
+	ext := fname[len(fname)-4:]
+	if ext == ".jpg" {
+		return Photo
+	} else if ext == ".gif" {
+		return Animation
+	} else if ext == ".mp4" {
+		return Video
+	} else {
+		return None
+	}
+}
 
 func modFilenameForList(fname string) string {
-	if fname[len(fname)-4:] == ".jpg" {
-		return "PIC " + fname[:len(fname)-4]
-	} else {
-		return "GIF " + fname[:len(fname)-4]
+	drtype := GetDristTypeFromFn(fname)
+	drname := fname[:len(fname)-4]
+	switch drtype {
+	case Photo:
+		return "PIC " + drname
+	case Animation:
+		return "GIF " + drname
+	case Video:
+		return "VID " + drname
+	default:
+		return "WTF " + drname
 	}
 }
 
@@ -65,19 +86,40 @@ func main() {
 			return
 		}
 
-		name := GetDristName(m.Text)
-		if _, err := os.Stat(fmt.Sprintf("./memes/%s.jpg", name)); !errors.Is(err, os.ErrNotExist) {
-			a := &tb.Photo{File: tb.FromDisk(fmt.Sprintf("./memes/%s.jpg", name))}
-			b.Send(m.Chat, a)
+		names, err := filepath.Glob("./memes/" + GetDristName(m.Text, None) + "*")
+		if err != nil {
+			b.Send(m.Chat, "Дрист не найден, унитаз пуст!")
+			return
+		}
+		if len(names) != 1 {
+			b.Send(m.Chat, "Бот захлебнулся, надо вилкой чистить")
+		}
+
+		if _, err := os.Stat(names[0]); !errors.Is(err, os.ErrNotExist) {
+			fmt.Println(names[0])
+			drtype := GetDristTypeFromFn(names[0])
+			var drist interface{ tb.Sendable }
+			switch drtype {
+			case Photo:
+				drist = &tb.Photo{File: tb.FromDisk(names[0])}
+			case Video:
+				drist = &tb.Video{File: tb.FromDisk(names[0])}
+			case Animation:
+				drist = &tb.Animation{File: tb.FromDisk(names[0])}
+			default:
+				{
+					b.Send(m.Chat, "Крейзи дрист")
+					return
+				}
+			}
+			_, err := b.Send(m.Chat, drist)
+			if err != nil {
+				log.Println(err)
+			}
 			return
 		}
 
-		if _, err := os.Stat(fmt.Sprintf("./memes/%s.gif", name)); !errors.Is(err, os.ErrNotExist) {
-			a := &tb.Video{File: tb.FromDisk(fmt.Sprintf("./memes/%s.gif", name))}
-			b.Send(m.Chat, a)
-			return
-		}
-
+		// TODO(sorohimm): possibly dead code, see globbing
 		b.Send(m.Chat, "Такого дриста пока нет")
 	})
 
@@ -91,13 +133,7 @@ func main() {
 			return
 		}
 
-		if m.ReplyTo.Photo != nil {
-			NewPhotoDrist(b, m)
-		} else if m.ReplyTo.Animation != nil {
-			NewAnimDrist(b, m)
-		} else {
-			return
-		}
+		NewDrist(b, m)
 	})
 
 	b.Start()
