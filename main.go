@@ -29,6 +29,7 @@ func main() {
 	b.Handle("/drist_list", dristlist_handle)
 	b.Handle("/drist", drist_handle)
 	b.Handle(tb.OnText, generic_handle)
+  b.Handle("/yt", yt_handle)
 
 	b.Start()
 }

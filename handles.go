@@ -1,6 +1,7 @@
 package main
 
 import (
+  "context"
   "errors"
   "fmt"
   tb "gopkg.in/tucnak/telebot.v2"
@@ -8,6 +9,7 @@ import (
   "os"
   "path/filepath"
   "regexp"
+  yt "github.com/wader/goutubedl"
 )
 
 func drist_handle(m *tb.Message) {
@@ -73,6 +75,21 @@ func dristlist_handle(m *tb.Message) {
 			dlist += "\n"
 		}
 		b.Send(m.Chat, dlist)
+}
+
+func yt_handle(m *tb.Message) {
+  ytdl_ctx, err := yt.New(context.Background(), m.Text[4:len(m.Text)], yt.Options{Type: yt.TypeSingle})
+  if err != nil {
+    b.Send(m.Chat, "гегель протев, дрисня в пиве")
+    return
+  }
+  dwnld, err := ytdl_ctx.Download(context.Background(), "best")
+  if err != nil {
+    b.Send(m.Chat, "Бать а как")
+    return
+  }
+  defer dwnld.Close()
+  b.Send(m.Chat, &tb.Video{File: tb.FromReader(dwnld)})
 }
 
 func generic_handle(m *tb.Message) {
