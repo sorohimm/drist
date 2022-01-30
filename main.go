@@ -12,7 +12,7 @@ var b *tb.Bot
 const telegramTokenEnv string = "5091467802:AAFgDlGT-kg95yj_DccVN6g-icsH6FGojHw"
 
 func main() {
-  var err error
+	var err error
 	b, err = tb.NewBot(tb.Settings{
 		URL: "https://api.telegram.org",
 
@@ -29,7 +29,7 @@ func main() {
 	b.Handle("/drist_list", dristlist_handle)
 	b.Handle("/drist", drist_handle)
 	b.Handle(tb.OnText, generic_handle)
-  b.Handle("/yt", yt_handle)
+	b.Handle("/yt", yt_handle)
 
 	b.Start()
 }
