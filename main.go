@@ -9,7 +9,10 @@ import (
 	"path/filepath"
 	"regexp"
 	"time"
+//  yt "github.com/kkdai/youtube/v2"
 )
+
+var b *tb.Bot
 
 const telegramTokenEnv string = "5091467802:AAFgDlGT-kg95yj_DccVN6g-icsH6FGojHw"
 
@@ -41,39 +44,7 @@ func modFilenameForList(fname string) string {
 	}
 }
 
-func main() {
-	b, err := tb.NewBot(tb.Settings{
-		URL: "https://api.telegram.org",
-
-		Token:  telegramTokenEnv,
-		Poller: &tb.LongPoller{Timeout: 10 * time.Microsecond},
-	})
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-
-	os.MkdirAll("./memes", os.ModePerm)
-
-	b.Handle("/drist_list", func(m *tb.Message) {
-		file, err := os.Open("./memes")
-		if err != nil {
-			log.Fatalf("failed opening directory: %s", err)
-		}
-		defer file.Close()
-
-		list, _ := file.Readdirnames(0) // 0 to read all files and folders
-
-		var dlist string
-		for _, f := range list {
-
-			dlist += modFilenameForList(f)
-			dlist += "\n"
-		}
-		b.Send(m.Chat, dlist)
-	})
-
-	b.Handle("/drist", func(m *tb.Message) {
+func drist_handle(m *tb.Message) {
 		if m.Text == "/drist" {
 			a := &tb.Photo{File: tb.FromDisk(fmt.Sprintf("./memes/Drist.jpg"))}
 			b.Send(m.Chat, a)
@@ -87,12 +58,9 @@ func main() {
 		}
 
 		names, err := filepath.Glob("./memes/" + GetDristName(m.Text, None) + "*")
-		if err != nil {
+		if err != nil || len(names) < 1 {
 			b.Send(m.Chat, "Дрист не найден, унитаз пуст!")
 			return
-		}
-		if len(names) != 1 {
-			b.Send(m.Chat, "Бот захлебнулся, надо вилкой чистить")
 		}
 
 		if _, err := os.Stat(names[0]); !errors.Is(err, os.ErrNotExist) {
@@ -121,9 +89,27 @@ func main() {
 
 		// TODO(sorohimm): possibly dead code, see globbing
 		b.Send(m.Chat, "Такого дриста пока нет")
-	})
+}
 
-	b.Handle(tb.OnText, func(m *tb.Message) {
+func dristlist_handle(m *tb.Message) {
+		file, err := os.Open("./memes")
+		if err != nil {
+			log.Fatalf("failed opening directory: %s", err)
+		}
+		defer file.Close()
+
+		list, _ := file.Readdirnames(0) // 0 to read all files and folders
+
+		var dlist string
+		for _, f := range list {
+
+			dlist += modFilenameForList(f)
+			dlist += "\n"
+		}
+		b.Send(m.Chat, dlist)
+}
+
+func generic_handle(m *tb.Message) {
 		if !m.IsReply() {
 			return
 		}
@@ -134,7 +120,26 @@ func main() {
 		}
 
 		NewDrist(b, m)
+}
+
+func main() {
+  var err error
+	b, err = tb.NewBot(tb.Settings{
+		URL: "https://api.telegram.org",
+
+		Token:  telegramTokenEnv,
+		Poller: &tb.LongPoller{Timeout: 10 * time.Microsecond},
 	})
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	os.MkdirAll("./memes", os.ModePerm)
+
+	b.Handle("/drist_list", dristlist_handle)
+	b.Handle("/drist", drist_handle)
+	b.Handle(tb.OnText, generic_handle)
 
 	b.Start()
 }
